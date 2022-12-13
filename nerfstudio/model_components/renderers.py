@@ -266,18 +266,30 @@ class UncertaintyRenderer(nn.Module):
 
     @classmethod
     def forward(
-        cls, betas: TensorType["bs":..., "num_samples", 1], weights: TensorType["bs":..., "num_samples", 1]
+        cls,
+        betas: TensorType["bs":..., "num_samples", 1],
+        weights: TensorType["bs":..., "num_samples", 1],
+        ray_indices: Optional[TensorType["num_samples"]] = None,
+        num_rays: Optional[int] = None,
     ) -> TensorType["bs":..., 1]:
         """Calculate uncertainty along the ray.
 
         Args:
             betas: Uncertainty betas for each sample.
-            weights: Weights of each sample.
+            weights: Weights for each sample.
+            ray_indices: Ray index for each sample, used when samples are packed.
+            num_rays: Number of rays, used when samples are packed.
 
         Returns:
-            Rendering of uncertainty.
+            Outputs of accumulated uncertainty.
         """
-        uncertainty = torch.sum(weights * betas, dim=-2)
+
+        if ray_indices is not None and num_rays is not None:
+            # # Necessary for packed samples from volumetric ray sampler
+            # uncertainty = nerfacc.accumulate_along_rays(weights * betas, ray_indices, None, num_rays)
+            uncertainty = nerfacc.accumulate_along_rays(weights, ray_indices, betas, num_rays)
+        else:
+            uncertainty = torch.sum(weights * betas, dim=-2)
         return uncertainty
 
 
