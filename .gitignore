@@ -184,3 +184,6 @@ bash/
 cache/
 package-lock.json
 camera_paths/
+
+# Ouputs
+outputs
