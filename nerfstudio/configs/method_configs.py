@@ -67,7 +67,7 @@ descriptions = {
     "dnerf": "Dynamic-NeRF model. (slow)",
     "phototourism": "Uses the Phototourism data.",
     "bayes-ngp": "Instant NGP with uncertainty output.",
-    # "bayes-nerf": "Nerfacto(minus) with uncertainty output.",
+    "bayes-nerf": "Nerfacto(minus) with uncertainty output.",
 }
 
 method_configs["nerfacto"] = Config(
@@ -287,35 +287,35 @@ method_configs["phototourism"] = Config(
     vis="viewer",
 )
 
-# method_configs["bayes-nerf"] = Config(
-#     method_name="bayes-nerf",
-#     trainer=TrainerConfig(
-#         steps_per_eval_batch=500, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
-#     ),
-#     pipeline=VanillaPipelineConfig(
-#         datamanager=VanillaDataManagerConfig(
-#             dataparser=NerfstudioDataParserConfig(),
-#             train_num_rays_per_batch=4096,
-#             eval_num_rays_per_batch=4096,
-#             camera_optimizer=CameraOptimizerConfig(
-#                 mode="SO3xR3", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
-#             ),
-#         ),
-#         model=BayesNeRFModelConfig(eval_num_rays_per_chunk=1 << 15),
-#     ),
-#     optimizers={
-#         "proposal_networks": {
-#             "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
-#             "scheduler": None,
-#         },
-#         "fields": {
-#             "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
-#             "scheduler": None,
-#         },
-#     },
-#     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
-#     vis="viewer",
-# )
+method_configs["bayes-nerf"] = Config(
+    method_name="bayes-nerf",
+    trainer=TrainerConfig(
+        steps_per_eval_batch=500, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
+    ),
+    pipeline=VanillaPipelineConfig(
+        datamanager=VanillaDataManagerConfig(
+            dataparser=NerfstudioDataParserConfig(),
+            train_num_rays_per_batch=4096,
+            eval_num_rays_per_batch=4096,
+            camera_optimizer=CameraOptimizerConfig(
+                mode="SO3xR3", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+            ),
+        ),
+        model=BayesNeRFModelConfig(eval_num_rays_per_chunk=1 << 15),
+    ),
+    optimizers={
+        "proposal_networks": {
+            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "scheduler": None,
+        },
+        "fields": {
+            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "scheduler": None,
+        },
+    },
+    viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+    vis="viewer",
+)
 
 method_configs["bayes-ngp"] = Config(
     method_name="bayes-ngp",
