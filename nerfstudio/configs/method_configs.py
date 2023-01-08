@@ -43,12 +43,12 @@ from nerfstudio.data.dataparsers.phototourism_dataparser import (
 )
 from nerfstudio.engine.optimizers import AdamOptimizerConfig, RAdamOptimizerConfig
 from nerfstudio.field_components.temporal_distortions import TemporalDistortionKind
-
-# from nerfstudio.models.bayes_nerf import BayesNeRFModelConfig
+from nerfstudio.models.bayes_nerf import BayesNeRFModelConfig
 from nerfstudio.models.bayes_ngp import BayesNGPModelConfig
 from nerfstudio.models.instant_ngp import InstantNGPModelConfig
 from nerfstudio.models.mipnerf import MipNerfModel
 from nerfstudio.models.nerfacto import NerfactoModelConfig
+from nerfstudio.models.nerfacto_minus import NerfactoMinusModelConfig
 from nerfstudio.models.semantic_nerfw import SemanticNerfWModelConfig
 from nerfstudio.models.tensorf import TensoRFModelConfig
 from nerfstudio.models.vanilla_nerf import NeRFModel, VanillaModelConfig
@@ -58,6 +58,7 @@ from nerfstudio.pipelines.dynamic_batch import DynamicBatchPipelineConfig
 method_configs: Dict[str, Config] = {}
 descriptions = {
     "nerfacto": "Recommended real-time model tuned for real captures. This model will be continually updated.",
+    "nerfacto-minus": "Nerfacto without appearance embedding",
     "instant-ngp": "Implementation of Instant-NGP. Recommended real-time model for bounded synthetic data.",
     "mipnerf": "High quality model for bounded scenes. (slow)",
     "semantic-nerfw": "Predicts semantic segmentations and filters out transient objects.",
@@ -66,7 +67,7 @@ descriptions = {
     "dnerf": "Dynamic-NeRF model. (slow)",
     "phototourism": "Uses the Phototourism data.",
     "bayes-ngp": "Instant NGP with uncertainty output.",
-    # "bayes-nerf": "Nerfacto with uncertainty output.",
+    # "bayes-nerf": "Nerfacto(minus) with uncertainty output.",
 }
 
 method_configs["nerfacto"] = Config(
@@ -84,6 +85,36 @@ method_configs["nerfacto"] = Config(
             ),
         ),
         model=NerfactoModelConfig(eval_num_rays_per_chunk=1 << 15),
+    ),
+    optimizers={
+        "proposal_networks": {
+            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "scheduler": None,
+        },
+        "fields": {
+            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "scheduler": None,
+        },
+    },
+    viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+    vis="viewer",
+)
+
+method_configs["nerfacto-minus"] = Config(
+    method_name="nerfacto-minus",
+    trainer=TrainerConfig(
+        steps_per_eval_batch=500, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
+    ),
+    pipeline=VanillaPipelineConfig(
+        datamanager=VanillaDataManagerConfig(
+            dataparser=NerfstudioDataParserConfig(),
+            train_num_rays_per_batch=4096,
+            eval_num_rays_per_batch=4096,
+            camera_optimizer=CameraOptimizerConfig(
+                mode="SO3xR3", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+            ),
+        ),
+        model=NerfactoMinusModelConfig(eval_num_rays_per_chunk=1 << 15),
     ),
     optimizers={
         "proposal_networks": {
