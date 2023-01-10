@@ -242,7 +242,7 @@ class TCNNBayesNeRFField(Field):
             network_config={
                 "otype": "FullyFusedMLP",
                 "activation": "ReLU",
-                "output_activation": "None",
+                "output_activation": "ReLU",
                 "n_neurons": 64,
                 "n_hidden_layers": 1,
             },
