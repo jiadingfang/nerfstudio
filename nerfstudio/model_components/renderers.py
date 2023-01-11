@@ -289,7 +289,7 @@ class UncertaintyRenderer(nn.Module):
             # uncertainty = nerfacc.accumulate_along_rays(weights * betas, ray_indices, None, num_rays)
             uncertainty = nerfacc.accumulate_along_rays(weights, ray_indices, betas, num_rays)
         else:
-            uncertainty = torch.sum(weights**2 * betas, dim=-2)
+            uncertainty = torch.sqrt(torch.sum((weights * betas) ** 2, dim=-2))
         return uncertainty
 
 

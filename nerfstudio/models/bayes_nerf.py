@@ -279,7 +279,8 @@ class BayesNeRFModel(Model):
 
         # output uncertainty
         uncertainty = self.renderer_uncertainty(field_outputs[FieldHeadNames.UNCERTAINTY], weights)
-        outputs["uncertainty"] = uncertainty + 0.03  # NOTE(ethan): this is the uncertainty min
+        outputs["uncertainty"] = uncertainty
+        # outputs["uncertainty"] = uncertainty + 0.03  # NOTE(ethan): this is the uncertainty min
         # outputs["uncertainty"] = uncertainty + 0.1  # NOTE: kwea123 suggests a higher number is better
 
         # # [debug] check outputs shapes
@@ -325,8 +326,8 @@ class BayesNeRFModel(Model):
 
         # uncertainty loss
         betas = outputs["uncertainty"]
-        loss_dict["uncertainty_loss"] = 3 + torch.log(betas).mean() / 2
-        loss_dict["rgb_loss"] = ((image - outputs["rgb"]) ** 2 / (betas * 2)).mean()
+        loss_dict["uncertainty_loss"] = 3 + torch.log(betas).mean()
+        loss_dict["rgb_loss"] = ((image - outputs["rgb"]) ** 2 / (betas ** 2 * 2)).mean()
         # loss_dict["density_loss"] = 0.01 * outputs["density"].mean()
 
         return loss_dict
@@ -376,7 +377,6 @@ class BayesNeRFModel(Model):
             images_dict[key] = prop_depth_i
 
         # uncertainty visuilization
-        uncertainty = outputs["uncertainty"]
-        images_dict["uncertainty"] = uncertainty
+        images_dict["uncertainty"] = outputs["uncertainty"]
 
         return metrics_dict, images_dict
