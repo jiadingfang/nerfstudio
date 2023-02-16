@@ -73,7 +73,8 @@ descriptions = {
     "phototourism": "Uses the Phototourism data.",
     "nerfplayer-nerfacto": "NeRFPlayer with nerfacto backbone.",
     "nerfplayer-ngp": "NeRFPlayer with InstantNGP backbone.",
-    "blocknerf": "blocknerf in nerfstudio."
+    "blocknerf-nerfacto": "BlockNeRF with nerfacto backbone.",
+    "blocknerf-ngp": "BlockNeRF with InstantNGP backbone."
 }
 
 method_configs["nerfacto"] = TrainerConfig(
@@ -332,8 +333,8 @@ method_configs["phototourism"] = TrainerConfig(
     vis="viewer",
 )
 
-method_configs["blocknerf"] = TrainerConfig(
-    method_name="blocknerf",
+method_configs["blocknerf-nerfacto"] = TrainerConfig(
+    method_name="blocknerf-nerfacto",
     steps_per_eval_batch=500,
     steps_per_save=2000,
     max_num_iterations=30000,
@@ -360,6 +361,29 @@ method_configs["blocknerf"] = TrainerConfig(
         },
     },
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+    vis="viewer",
+)
+
+method_configs["blocknerf-ngp"] = TrainerConfig(
+    method_name="blocknerf-ngp",
+    steps_per_eval_batch=500,
+    steps_per_save=2000,
+    max_num_iterations=30000,
+    mixed_precision=True,
+    pipeline=DynamicBatchPipelineConfig(
+        datamanager=VariableResDataManagerConfig(
+            dataparser=NerfstudioDataParserConfig(), 
+            train_num_rays_per_batch=8192
+            ),
+        model=InstantNGPModelConfig(eval_num_rays_per_chunk=8192),
+    ),
+    optimizers={
+        "fields": {
+            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "scheduler": None,
+        }
+    },
+    viewer=ViewerConfig(num_rays_per_chunk=64000),
     vis="viewer",
 )
 
