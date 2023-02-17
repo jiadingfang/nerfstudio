@@ -387,6 +387,26 @@ method_configs["blocknerf-ngp"] = TrainerConfig(
     vis="viewer",
 )
 
+method_configs["blocknerf-mipnerf"] = TrainerConfig(
+    method_name="blocknerf-mipnerf",
+    pipeline=VanillaPipelineConfig(
+        datamanager=VariableResDataManagerConfig(dataparser=NerfstudioDataParserConfig(), train_num_rays_per_batch=1024),
+        model=VanillaModelConfig(
+            _target=MipNerfModel,
+            loss_coefficients={"rgb_loss_coarse": 0.1, "rgb_loss_fine": 1.0},
+            num_coarse_samples=128,
+            num_importance_samples=128,
+            eval_num_rays_per_chunk=1024,
+        ),
+    ),
+    optimizers={
+        "fields": {
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "scheduler": None,
+        }
+    },
+)
+
 method_configs["nerfplayer-nerfacto"] = TrainerConfig(
     method_name="nerfplayer-nerfacto",
     steps_per_eval_batch=500,
