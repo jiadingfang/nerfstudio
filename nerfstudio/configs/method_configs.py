@@ -74,7 +74,8 @@ descriptions = {
     "nerfplayer-nerfacto": "NeRFPlayer with nerfacto backbone.",
     "nerfplayer-ngp": "NeRFPlayer with InstantNGP backbone.",
     "blocknerf-nerfacto": "BlockNeRF with nerfacto backbone.",
-    "blocknerf-ngp": "BlockNeRF with InstantNGP backbone."
+    "blocknerf-ngp": "BlockNeRF with InstantNGP backbone.",
+    "blocknerf-mipnerf": "BlockNeRF with mipnerf."
 }
 
 method_configs["nerfacto"] = TrainerConfig(
