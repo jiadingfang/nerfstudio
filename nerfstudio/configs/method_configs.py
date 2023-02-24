@@ -77,7 +77,7 @@ descriptions = {
     "nerfplayer-nerfacto": "NeRFPlayer with nerfacto backbone.",
     "nerfplayer-ngp": "NeRFPlayer with InstantNGP backbone.",
     "blocknerf-nerfacto": "BlockNeRF with nerfacto backbone.",
-    "blocknerf-nerfacto-appearance-matching": "BlockNeRF with nerfacto backbone that matches appearance embedding in test tiem.",
+    "blocknerf-appearance-matching-nerfacto": "BlockNeRF with nerfacto backbone that matches appearance embedding in test time.",
     "blocknerf-ngp": "BlockNeRF with InstantNGP backbone.",
     "blocknerf-mipnerf": "BlockNeRF with mipnerf."
 }
@@ -369,8 +369,8 @@ method_configs["blocknerf-nerfacto"] = TrainerConfig(
     vis="viewer",
 )
 
-method_configs["blocknerf-nerfacto-appearance-matching"] = TrainerConfig(
-    method_name="blocknerf-nerfacto-appearance-matching",
+method_configs["blocknerf-appearance-matching-nerfacto"] = TrainerConfig(
+    method_name="blocknerf-appearance-matching-nerfacto",
     steps_per_eval_batch=500,
     steps_per_save=2000,
     max_num_iterations=30000,
