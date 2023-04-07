@@ -51,23 +51,23 @@ class Fuser:
     """Downsample factor for NeRF rendering."""
     n_hemi_views: int = 32
     """Number of hemispheric views to use."""
-    render_hemi_views: bool = False
+    render_hemi_views: bool = True
     """Number of hemispheric views to render."""
     fps: int = 0
     """Frames per second for rendering."""
     sfm_tool: str = "hloc"
     """SfM tool used for the SfM."""
-    sfm_wo_training_views: bool = False
+    sfm_wo_training_views: bool = True
     """Whether to include training views in SfM."""
     sfm_w_hemi_views: float = 1.0
     """ratio of hemispheric views compared to training views to use in SfM."""
     output_dir: Path = Path("outputs/registration")
     """Output directory."""
-    render_views: bool = False
+    render_views: bool = True
     """Number of views to render."""
-    run_sfm: bool = False
+    run_sfm: bool = True
     """Whether to run SfM."""
-    compute_trans: bool = False
+    compute_trans: bool = True
     """Whether to compute the transformation error statistics."""
     vis: bool = False
     """Whether to visualize the results."""

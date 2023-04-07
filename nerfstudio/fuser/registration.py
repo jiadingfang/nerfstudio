@@ -68,7 +68,7 @@ class Registration:
         self.vis = vis
 
     def run(self):
-        print("Registration")
+        print("Registration run...")
 
         if self.exp_name:
             name = self.exp_name
@@ -99,9 +99,6 @@ class Registration:
                     log_dict[k] = str(attr)
                 else:
                     log_dict[k] = attr
-
-            # print("log_dict: ", log_dict)
-            # print("model_A_dir type: ", type(log_dict["model_A_dir"]))
 
             with open(output_dir / f"{cfg}.json", "w") as f:
                 json.dump(log_dict, f, indent=2)
@@ -224,6 +221,7 @@ class Registration:
             run_func(sfm_dir, sfm_dir, CameraModel.OPENCV)
 
         if self.compute_trans:
+            print("Compute transformation error...")
             images = read_images_binary(sfm_dir / "sparse/0/images.bin")
             meta_A = torch.load(output_dir / "A_in.pt", map_location="cpu")
             meta_B = torch.load(output_dir / "B_in.pt", map_location="cpu")
