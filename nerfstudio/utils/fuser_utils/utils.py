@@ -2,26 +2,24 @@ import json
 
 import numpy as np
 import torch
-from nerfstudio.process_data.colmap_utils import qvec2rotmat
-from pytorch3d.transforms.se3 import se3_exp_map, se3_log_map
 from scipy.spatial.transform import Rotation
 
+from nerfstudio.process_data.colmap_utils import qvec2rotmat
 
-def gen_lookat_pose(c, t, u=None, pose_spec=2, pose_type="c2w"):
-    """generates a c2w pose
-    c: camera center
-    t: target to look at
-    u: up vector
-    pose_spec: cam frame spec
-            0: x->right, y->front, z->up
-            1: x->right, y->down, z->front
-            2: x->right, y->up, z->back
-    we assume world frame spec is 0
-    pose_type: one of {'c2w', 'w2c'}"""
 
+def gen_lookat_pose(c, t, u=None, pose_spec=2, pose_type='c2w'):
+    """ generates a c2w pose
+        c: camera center
+        t: target to look at
+        u: up vector
+        pose_spec: cam frame spec
+                0: x->right, y->front, z->up
+                1: x->right, y->down, z->front
+                2: x->right, y->up, z->back
+        we assume world frame spec is 0
+        pose_type: one of {'c2w', 'w2c'} """
     def cross(a, b) -> np.ndarray:
         return np.cross(a, b)
-
     if u is None:
         u = np.array([0, 0, 1])
     y = t - c
@@ -31,17 +29,21 @@ def gen_lookat_pose(c, t, u=None, pose_spec=2, pose_type="c2w"):
     z = cross(x, y)
     R = np.array([x, y, z]).T
     if pose_spec == 1:
-        R = R @ np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+        R = R @ np.array([[1, 0, 0],
+                         [0, 0, 1],
+                          [0, -1, 0]])
     elif pose_spec == 2:
-        R = R @ np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
-    if pose_type == "w2c":
+        R = R @ np.array([[1, 0, 0],
+                         [0, 0, -1],
+                          [0, 1, 0]])
+    if pose_type == 'w2c':
         R = R.T
         c = -R @ c
     return np.concatenate((R, c[:, None]), axis=1, dtype=np.float32)
 
 
 def gen_elliptical_poses(a, b, theta, h, target=np.zeros(3), n=10, pose_spec=2):
-    """generate n poses (c2w) distributed along an ellipse of (a, b, theta) at height h"""
+    """ generate n poses (c2w) distributed along an ellipse of (a, b, theta) at height h"""
     poses = []
     for alpha in np.linspace(0, np.pi * 2, num=n, endpoint=False):
         x0 = a * np.cos(alpha)
@@ -54,7 +56,7 @@ def gen_elliptical_poses(a, b, theta, h, target=np.zeros(3), n=10, pose_spec=2):
 
 
 def gen_circular_poses(r, h, target=np.zeros(3), n=10, pose_spec=2):
-    """generate n poses (c2w) distributed along a circle of radius r at height h"""
+    """ generate n poses (c2w) distributed along a circle of radius r at height h"""
     return gen_elliptical_poses(r, r, 0, h, target=target, n=n, pose_spec=pose_spec)
 
 
@@ -68,37 +70,41 @@ def gen_hemispherical_poses(r, gamma_lo, gamma_hi=None, target=np.zeros(3), m=3,
     return c2ws
 
 
-def complete_transformation(T):
-    """completes T to be 4x4"""
+def complete_transform(T):
+    """ completes T to be [..., 4, 4] """
     s = T.shape
     if s[-2:] == (4, 4):
         return T
     if isinstance(T, np.ndarray):
-        return np.concatenate((T, np.tile(np.array([0, 0, 0, 1], dtype=T.dtype), s[:-2] + (1, 1))), axis=-2)
-    return torch.cat((T, torch.tensor([0, 0, 0, 1], device=T.device).tile(s[:-2] + (1, 1))), dim=-2)
+        return np.concatenate((T, np.broadcast_to(np.array([0, 0, 0, 1], dtype=T.dtype), (*s[:-2], 1, 4))), axis=-2)
+    return torch.cat((T, torch.tensor([0, 0, 0, 1], dtype=T.dtype, device=T.device).broadcast_to(*s[:-2], 1, -1)), dim=-2)
 
 
-def sim3_log_map(T):
-    """T: nx4x4"""
-    T = T.clone()
-    s = torch.linalg.det(T[:, :3, :3]) ** (1 / 3)
-    T[:, :3, :3] /= s[:, None, None]
-    v = se3_log_map(T.transpose(1, 2))
-    return torch.cat((v, torch.log(s)[:, None]), dim=1)
+# def sim3_log_map(T):
+#     """ T: nx4x4 """
+#     T = T.clone()
+#     s = torch.linalg.det(T[:, :3, :3])**(1 / 3)
+#     T[:, :3, :3] /= s[:, None, None]
+#     v = se3_log_map(T.transpose(1, 2))
+#     return torch.cat((v, torch.log(s)[:, None]), dim=1)
 
 
-def sim3_exp_map(t):
-    """t: nx7"""
-    T = se3_exp_map(t[:, :6]).transpose(1, 2)
-    T[:, :3, :3] *= torch.exp(t[:, 6, None, None])
-    return T
+# def sim3_exp_map(t):
+#     """ t: nx7 """
+#     T = se3_exp_map(t[:, :6]).transpose(1, 2)
+#     T[:, :3, :3] *= torch.exp(t[:, 6, None, None])
+#     return T
 
 
 def decompose_sim3(T):
-    """T: 4x4 np array"""
-    G = T.copy()
-    s = np.linalg.det(G[:3, :3]) ** (1 / 3)
-    G[:3, :3] /= s
+    """ T: [..., 4, 4] """
+    if isinstance(T, torch.Tensor):
+        G = T.clone()
+        s = torch.linalg.det(G[..., :3, :3])**(1 / 3)
+    else:
+        G = T.copy()
+        s = np.linalg.det(G[..., :3, :3])**(1 / 3)
+    G[:3, :3] /= s[..., None, None]
     return G, s
 
 
@@ -115,20 +121,21 @@ def compute_trans_diff(T1, T2):
 def extract_colmap_pose(colmap_im):
     rotation = qvec2rotmat(colmap_im.qvec)
     translation = colmap_im.tvec[:, None]
-    w2c = complete_transformation(np.concatenate((rotation, translation), axis=1))
+    w2c = complete_transform(np.concatenate((rotation, translation), axis=1))
     c2w = np.linalg.inv(w2c)
     # Convert from COLMAP's camera coordinate system (spec 1) to nerfstudio's (spec 2)
-    c2w = c2w @ np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+    c2w = c2w @ np.array([[1, 0, 0, 0],
+                         [0, -1, 0, 0],
+                         [0, 0, -1, 0],
+                         [0, 0, 0, 1]])
     return c2w.astype(np.float32)
 
 
-def write2json(cam_params, poses, output_dir, name="transforms"):
-    out = {
-        cam_param: cam_params[cam_param] for cam_param in ["fl_x", "fl_y", "cx", "cy", "w", "h", "k1", "k2", "p1", "p2"]
-    }
-    out["camera_model"] = "OPENCV"
-    out["frames"] = [{"file_path": im_name, "transform_matrix": trans.tolist()} for im_name, trans in poses.items()]
-    with open(output_dir / f"{name}.json", "w") as f:
+def write2json(cam_params, poses, output_dir, name='transforms'):
+    out = {cam_param: cam_params[cam_param] for cam_param in ['fl_x', 'fl_y', 'cx', 'cy', 'w', 'h', 'k1', 'k2', 'p1', 'p2']}
+    out['camera_model'] = 'OPENCV'
+    out['frames'] = [{'file_path': im_name, 'transform_matrix': trans.tolist()} for im_name, trans in poses.items()]
+    with open(output_dir / f'{name}.json', 'w') as f:
         json.dump(out, f, indent=4)
 
 
@@ -147,12 +154,12 @@ def xyz2rtg(xs, ys, zs):
 
 
 def img_cat(imgs, axis, interval=0, color=255):
-    assert axis in [0, 1], "axis must be either 0 or 1"
-    h, w = imgs[0].shape[:2]
+    assert axis in [0, 1], 'axis must be either 0 or 1'
+    h, w, c = imgs[0].shape
     if axis:
-        gap = np.broadcast_to(color, (h, interval, 3))
+        gap = np.broadcast_to(color, (h, interval, c))
     else:
-        gap = np.broadcast_to(color, (interval, w, 3))
+        gap = np.broadcast_to(color, (interval, w, c))
     gap = gap.astype(imgs[0].dtype)
     n = len(imgs)
     t = [gap] * (n * 2 - 1)
@@ -162,3 +169,15 @@ def img_cat(imgs, axis, interval=0, color=255):
 
 def dilute_image(img, t, b, l, r, p=0.5, color=(255, 255, 255)):
     img[t:b, l:r] = ((1 - p) * img[t:b, l:r] + p * np.asarray(color)).astype(img.dtype)
+
+
+def idw(dists, g):
+    t = dists.unsqueeze(1) / dists.unsqueeze(0)
+    return 1 / (t**g).sum(dim=1)
+
+
+def avg_trans(Ts, s=None, avg_func=np.mean):
+    T = avg_func(Ts, axis=0)
+    u, s_, vh = np.linalg.svd(T[:3, :3])
+    T[:3, :3] = u * (s if s else s_) @ vh
+    return T

@@ -25,98 +25,76 @@ class MyNerfactoModel(NerfactoModel):
     def get_outputs(self, ray_bundle: RayBundle):
         ray_samples = self.proposal_sampler(ray_bundle, density_fns=self.density_fns)[0]
         field_outputs = self.field(ray_samples)
-        weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY])
 
-        rgb = field_outputs[FieldHeadNames.RGB]
-        img = self.renderer_rgb(rgb=rgb, weights=weights)
+        weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY])
+        rgbs = field_outputs[FieldHeadNames.RGB]
+        rgb = self.renderer_rgb(rgb=rgbs, weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         accumulation = self.renderer_accumulation(weights=weights)
 
-        rgb = torch.cat((torch.empty_like(rgb[..., [0], :]), rgb), dim=-2)
         weights = torch.cat((torch.zeros_like(weights[..., [0], :]), weights), dim=-2)
+        rgbs = torch.cat((torch.zeros_like(rgbs[..., [0], :]), rgbs), dim=-2)
         deltas = torch.cat((ray_samples.frustums.starts[..., [0], :], ray_samples.deltas), dim=-2)
 
         outputs = {
-            "rgb": rgb,
-            "rgb_img": img,
-            "accumulation": accumulation,
-            "depth": depth,
-            "weights": weights,
-            "deltas": deltas,
-            "directions": ray_samples.frustums.directions[:, 0],
+            'weights': weights,  # (n_rays, n_samples, 1)
+            'rgbs': rgbs,  # (n_rays, n_samples, 3)
+            'rgb': rgb,  # (n_rays, 3)
+            'accumulation': accumulation,  # (n_rays, 1)
+            'depth': depth,  # (n_rays, 1)
+            'deltas': deltas,  # (n_rays, n_samples, 1)
+            'direction': ray_samples.frustums.directions[:, 0]  # (n_rays, 3)
         }
         return outputs
 
 
 # @dataclass
-# class MyNerfactoWoAppModelConfig(NerfactoWoAppModelConfig):
-#     """My NerfactoMinus Model Config"""
+# class MyInstantNGPModelConfig(InstantNGPModelConfig):
+#     """My Instant NGP Model Config"""
 
-#     _target: Type = field(default_factory=lambda: MyNerfactoWoAppModel)
+#     _target: Type = field(default_factory=lambda: MyNGPModel)
 
 
-# class MyNerfactoWoAppModel(NerfactoWoAppModel):
+# class MyNGPModel(NGPModel):
 #     def get_outputs(self, ray_bundle: RayBundle):
-#         ray_samples = self.proposal_sampler(ray_bundle, density_fns=self.density_fns)[0]
+#         num_rays = len(ray_bundle)
+#         with torch.no_grad():
+#             ray_samples, ray_indices = self.sampler(
+#                 ray_bundle=ray_bundle,
+#                 near_plane=self.config.near_plane,
+#                 far_plane=self.config.far_plane,
+#                 render_step_size=self.config.render_step_size,
+#                 cone_angle=self.config.cone_angle,
+#             )
 #         field_outputs = self.field(ray_samples)
-#         weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY])
+#         packed_info = nerfacc.pack_info(ray_indices, num_rays)
 
-#         rgb = field_outputs[FieldHeadNames.RGB]
-#         img = self.renderer_rgb(rgb=rgb, weights=weights)
-#         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
-#         accumulation = self.renderer_accumulation(weights=weights)
-
-#         rgb = torch.cat((torch.empty_like(rgb[..., [0], :]), rgb), dim=-2)
-#         weights = torch.cat((torch.zeros_like(weights[..., [0], :]), weights), dim=-2)
-#         deltas = torch.cat((ray_samples.frustums.starts[..., [0], :], ray_samples.deltas), dim=-2)
-
-#         outputs = {
-#             'rgb': rgb,
-#             'rgb_img': img,
-#             'accumulation': accumulation,
-#             'depth': depth,
-#             'weights': weights,
-#             'deltas': deltas,
-#             'directions': ray_samples.frustums.directions[:, 0]
-#         }
-#         return outputs
-
-
-# @dataclass
-# class MyBayesNeRFModelConfig(BayesNeRFModelConfig):
-#     """My BayesNeRF Model Config"""
-
-#     _target: Type = field(default_factory=lambda: MyBayesNeRFModel)
-
-
-# class MyBayesNeRFModel(BayesNeRFModel):
-#     def get_outputs(self, ray_bundle: RayBundle):
-#         ray_samples = self.proposal_sampler(ray_bundle, density_fns=self.density_fns)[0]
-#         field_outputs = self.field(ray_samples, compute_normals=self.config.predict_normals)
-#         weights = ray_samples.get_weights(field_outputs[FieldHeadNames.DENSITY])
-
-#         rgb = field_outputs[FieldHeadNames.RGB]
-#         rgb_img = self.renderer_rgb(rgb=rgb, weights=weights)
-#         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
-#         accumulation = self.renderer_accumulation(weights=weights)
-#         uncertainty = field_outputs[FieldHeadNames.UNCERTAINTY]
-#         uncertainty_img = self.renderer_uncertainty(uncertainty, weights)
-
-#         rgb = torch.cat((torch.empty_like(rgb[..., [0], :]), rgb), dim=-2)
-#         uncertainty = torch.cat((torch.empty_like(uncertainty[..., [0], :]), uncertainty), dim=-2)
-#         weights = torch.cat((torch.zeros_like(weights[..., [0], :]), weights), dim=-2)
-#         deltas = torch.cat((ray_samples.frustums.starts[..., [0], :], ray_samples.deltas), dim=-2)
+#         weights = nerfacc.render_weight_from_density(
+#             packed_info=packed_info,
+#             sigmas=field_outputs[FieldHeadNames.DENSITY],
+#             t_starts=ray_samples.frustums.starts,
+#             t_ends=ray_samples.frustums.ends,
+#         )
+#         rgbs = field_outputs[FieldHeadNames.RGB]
+#         rgb = self.renderer_rgb(
+#             rgb=rgbs,
+#             weights=weights,
+#             ray_indices=ray_indices,
+#             num_rays=num_rays,
+#         )
+#         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples, ray_indices=ray_indices, num_rays=num_rays)
+#         accumulation = self.renderer_accumulation(weights=weights, ray_indices=ray_indices, num_rays=num_rays)
 
 #         outputs = {
-#             'rgb': rgb,
-#             "rgb_img": rgb_img,
-#             "accumulation": accumulation,
-#             "depth": depth,
-#             "uncertainty": uncertainty,
-#             "uncertainty_img": uncertainty_img,
-#             'weights': weights,
-#             'deltas': deltas,
-#             'directions': ray_samples.frustums.directions[:, 0]
+#             'rgbs': rgbs,  # (n_samples, 3)
+#             'rgb': rgb,  # (n_rays, 3)
+#             'accumulation': accumulation,  # (n_rays, 1)
+#             'depth': depth,  # (n_rays, 1)
+#             'weights': weights,  # (n_samples, 1)
+#             'starts': ray_samples.frustums.starts,  # (n_samples, 1)
+#             'ends': ray_samples.frustums.ends,  # (n_samples, 1)
+#             # 'num_samples_per_ray': packed_info[:, 1],  # (n_rays)
+#             'directions': ray_samples.frustums.directions[packed_info[:, 0].to(int)]  # (n_rays, 3)
 #         }
 #         return outputs
 
@@ -134,7 +112,7 @@ class MyRGBRenderer(RGBRenderer):
         rgb: TensorType["bs":..., "num_samples", 3],
         ws: TensorType["bs":..., "num_samples", 1],
         bg_w: TensorType["bs":..., 1],
-        background_color: Union[Literal["random", "last_sample"], TensorType[3]] = "random",
+        background_color: Union[Literal["random", "last_sample"], TensorType[3]] = "random"
     ) -> TensorType["bs":..., 3]:
         """Composite samples along ray and render color image
 
